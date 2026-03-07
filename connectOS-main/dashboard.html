@@ -1,0 +1,999 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NetKofi — Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@300;400;500;600&family=Instrument+Serif:ital@0;1&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+html,body { width:100%; height:100%; overflow:hidden; background:#07070f; }
+
+:root {
+  --bg: #07070f;
+  --surface: rgba(12,12,22,0.92);
+  --surface2: rgba(16,16,28,0.96);
+  --border: rgba(255,255,255,0.07);
+  --border2: rgba(255,255,255,0.11);
+  --text: #dddaf0;
+  --muted: #5a5870;
+  --accent: #b8965a;
+  --c-finance: #5ecfb1;
+}
+
+/* ── TOP BAR ─────────────────────────────────────────────────────── */
+.topbar {
+  position: fixed; top:0; left:0; right:0;
+  height: 3.25rem;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 1.5rem;
+  background: rgba(7,7,15,0.96);
+  border-bottom: 1px solid var(--border);
+  backdrop-filter: blur(20px);
+  z-index: 20;
+}
+.logo {
+  font-family: 'Syne', sans-serif;
+  font-weight: 800; font-size: 1.25rem;
+  color: var(--accent); letter-spacing: -0.03em;
+  flex-shrink: 0;
+}
+
+/* Search */
+.search-wrap { position: relative; }
+.search-icon {
+  position: absolute; left: 0.75rem; top:50%; transform: translateY(-50%);
+  width: 0.875rem; height: 0.875rem;
+  color: var(--muted); pointer-events: none;
+  transition: color 0.2s;
+}
+.search-wrap:focus-within .search-icon { color: var(--accent); }
+.search-input {
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  color: var(--text);
+  font-family: 'Geist Mono', monospace;
+  font-size: 0.6875rem;
+  padding: 0.4rem 1rem 0.4rem 2.25rem;
+  border-radius: 999px;
+  width: 17rem;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.search-input::placeholder { color: var(--muted); opacity: 0.6; }
+.search-input:focus { border-color: rgba(184,150,90,0.5); box-shadow: 0 0 0 3px rgba(184,150,90,0.08); }
+
+/* Search Dropdown */
+.search-dropdown {
+  position: absolute; top: calc(100% + 0.5rem); left: 0; right: 0;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  box-shadow: 0 16px 48px rgba(0,0,0,0.6);
+  border-radius: 0.75rem;
+  overflow: hidden;
+  z-index: 30;
+  display: none;
+}
+.search-dropdown.open { display: block; }
+.search-dropdown-header {
+  padding: 0.5rem 0.75rem 0.375rem;
+  border-bottom: 1px solid var(--border);
+  background: rgba(255,255,255,0.02);
+}
+.search-dropdown-label {
+  font-family: 'Geist Mono', monospace;
+  font-size: 0.5625rem; letter-spacing: 0.18em;
+  text-transform: uppercase; color: var(--muted);
+}
+.search-result-item {
+  display: flex; align-items: center; gap: 0.75rem;
+  padding: 0.625rem 0.75rem;
+  cursor: pointer; transition: background 0.15s;
+  border: none; background: transparent; width: 100%; text-align: left;
+}
+.search-result-item:hover { background: rgba(255,255,255,0.04); }
+.search-result-item:hover .search-result-name { color: var(--accent); }
+.search-dot { width: 0.5rem; height: 0.5rem; border-radius: 50%; flex-shrink: 0; }
+.search-result-name {
+  font-family: 'Geist Mono', monospace; font-size: 0.6875rem; font-weight: 600;
+  color: var(--text); transition: color 0.15s;
+}
+.search-result-meta { font-family: 'Geist Mono', monospace; font-size: 0.5625rem; color: var(--muted); }
+.search-empty { padding: 1rem; text-align: center; font-family: 'Geist Mono', monospace; font-size: 0.625rem; color: var(--muted); font-style: italic; }
+
+/* Stats pill */
+.stats-pill {
+  display: flex; align-items: center; gap: 0.375rem;
+  padding: 0.375rem 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  font-family: 'Geist Mono', monospace; font-size: 0.6875rem; color: var(--muted);
+  white-space: nowrap;
+}
+.stats-pill span { color: var(--text); }
+
+/* Top right buttons */
+.topbar-actions { display: flex; align-items: center; gap: 0.5rem; }
+.topbar-btn {
+  font-family: 'Geist Mono', monospace; font-size: 0.625rem; letter-spacing: 0.12em;
+  text-transform: uppercase; padding: 0.4rem 1rem;
+  border: 1px solid var(--border2); background: transparent;
+  color: var(--muted); cursor: pointer; transition: all 0.2s;
+}
+.topbar-btn:hover { color: var(--text); border-color: rgba(255,255,255,0.2); }
+.topbar-btn-cta {
+  background: var(--accent); color: #07070f; font-weight: 600;
+  border-color: var(--accent);
+}
+.topbar-btn-cta:hover { opacity: 0.88; color: #07070f; }
+
+/* ── SCORE CARD ────────────────────────────────────────────────── */
+.score-card {
+  position: fixed; top: 4.25rem; right: 1.5rem;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  padding: 1.25rem 1.375rem 1.375rem;
+  z-index: 20; min-width: 13rem;
+  box-shadow: 0 8px 48px rgba(0,0,0,0.5);
+  animation: fadeUp 0.6s 0.3s both;
+}
+.score-number {
+  font-family: 'Syne', sans-serif; font-weight: 800;
+  font-size: 2.5rem; color: var(--accent); line-height: 1;
+}
+.score-label {
+  font-family: 'Geist Mono', monospace; font-size: 0.5625rem;
+  letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--muted); margin-top: 0.25rem;
+}
+.score-divider { height: 1px; background: var(--border); margin: 0.875rem 0; }
+.score-item {
+  font-family: 'Geist Mono', monospace; font-size: 0.625rem;
+  color: var(--c-finance); margin-bottom: 0.375rem;
+}
+.score-streak {
+  font-family: 'Geist Mono', monospace; font-size: 0.625rem;
+  color: var(--accent); display: flex; align-items: center; gap: 0.25rem;
+  margin-top: 0.5rem;
+}
+
+/* ── SIDEBAR ──────────────────────────────────────────────────── */
+.sidebar {
+  position: fixed; left: 1.5rem; top: 50%; transform: translateY(-50%);
+  display: flex; flex-direction: column; align-items: center; gap: 1rem;
+  z-index: 20;
+  animation: fadeUp 0.6s 0.4s both;
+}
+.sidebar-btn {
+  width: 3rem; height: 3rem;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: 0.75rem;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: all 0.2s;
+  color: var(--muted); position: relative;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+}
+.sidebar-btn:hover { color: var(--accent); border-color: rgba(184,150,90,0.4); transform: translateX(3px); }
+.sidebar-btn:active { transform: translateX(3px) scale(0.95); }
+.sidebar-btn svg { width: 1.25rem; height: 1.25rem; }
+.sidebar-divider { width: 1px; height: 2rem; background: var(--border); }
+.sidebar-tooltip {
+  position: absolute; left: calc(100% + 0.75rem); top: 50%; transform: translateY(-50%);
+  background: var(--surface2); border: 1px solid var(--border2);
+  font-family: 'Geist Mono', monospace; font-size: 0.5625rem; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--text); padding: 0.3rem 0.6rem;
+  white-space: nowrap; pointer-events: none;
+  opacity: 0; transition: opacity 0.15s;
+}
+.sidebar-btn:hover .sidebar-tooltip { opacity: 1; }
+
+/* ── GRAPH CANVAS ─────────────────────────────────────────────── */
+#graph-canvas { position: fixed; inset: 0; z-index: 1; }
+#graph-canvas svg { width: 100%; height: 100%; }
+
+/* Node labels */
+.node-label {
+  font-family: 'Geist Mono', monospace; font-size: 10px;
+  fill: var(--text); pointer-events: none; opacity: 0.7;
+}
+
+/* ── PROFILE OVERLAY ─────────────────────────────────────────── */
+.profile-overlay {
+  position: fixed; top: 0; right: 0; bottom: 0;
+  width: 22rem; background: var(--surface2);
+  border-left: 1px solid var(--border2);
+  z-index: 30; display: flex; flex-direction: column;
+  transform: translateX(100%);
+  transition: transform 0.35s cubic-bezier(0.22,0,0,1);
+  box-shadow: -16px 0 64px rgba(0,0,0,0.5);
+}
+.profile-overlay.open { transform: translateX(0); }
+
+.profile-header {
+  padding: 1.25rem 1.5rem 1rem;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: flex-start; justify-content: space-between;
+}
+.profile-close {
+  width: 1.625rem; height: 1.625rem;
+  background: transparent; border: 1px solid var(--border2);
+  color: var(--muted); font-size: 0.875rem; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s; flex-shrink: 0;
+}
+.profile-close:hover { color: var(--text); border-color: rgba(255,255,255,0.2); }
+.profile-avatar {
+  width: 3.5rem; height: 3.5rem; border-radius: 50%;
+  object-fit: cover; border: 1px solid var(--border2);
+  display: block; margin-bottom: 0.875rem;
+}
+.profile-name {
+  font-family: 'Instrument Serif', serif; font-size: 1.375rem;
+  color: var(--text); line-height: 1.1; letter-spacing: -0.02em;
+  margin-bottom: 0.25rem;
+}
+.profile-role {
+  font-family: 'Geist Mono', monospace; font-size: 0.625rem;
+  color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase;
+}
+.profile-role span { color: var(--accent); }
+
+.profile-body { flex: 1; overflow-y: auto; padding: 1.25rem 1.5rem; }
+.profile-body::-webkit-scrollbar { width: 3px; }
+.profile-body::-webkit-scrollbar-track { background: transparent; }
+.profile-body::-webkit-scrollbar-thumb { background: var(--border2); }
+
+.profile-section { margin-bottom: 1.5rem; }
+.profile-section-label {
+  font-family: 'Geist Mono', monospace; font-size: 0.5625rem;
+  letter-spacing: 0.2em; text-transform: uppercase;
+  color: var(--muted); margin-bottom: 0.625rem;
+}
+.profile-bio {
+  font-family: 'Instrument Serif', serif; font-size: 0.9375rem;
+  color: #b8b4c8; line-height: 1.7;
+}
+.profile-tags { display: flex; flex-wrap: wrap; gap: 0.375rem; }
+.profile-tag {
+  font-family: 'Geist Mono', monospace; font-size: 0.5625rem;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--muted); padding: 0.25rem 0.625rem;
+  border: 1px solid var(--border2); background: rgba(255,255,255,0.02);
+}
+.profile-event-item {
+  display: flex; align-items: center; gap: 0.625rem;
+  padding: 0.5rem 0; border-bottom: 1px solid var(--border);
+}
+.profile-event-item:last-child { border-bottom: none; }
+.profile-event-dot { width: 0.5rem; height: 0.5rem; border-radius: 50%; flex-shrink: 0; }
+.profile-event-name { font-family: 'Geist Mono', monospace; font-size: 0.625rem; color: var(--text); }
+.profile-event-date { font-family: 'Geist Mono', monospace; font-size: 0.5rem; color: var(--muted); margin-top: 0.125rem; }
+
+/* ── EVENTS PANEL ────────────────────────────────────────────── */
+.events-panel {
+  position: fixed; top: 3.25rem; left: 0; bottom: 0;
+  width: 22rem; background: var(--surface2);
+  border-right: 1px solid var(--border2);
+  z-index: 25; display: flex; flex-direction: column;
+  transform: translateX(-100%);
+  transition: transform 0.35s cubic-bezier(0.22,0,0,1);
+  box-shadow: 16px 0 64px rgba(0,0,0,0.4);
+}
+.events-panel.open { transform: translateX(0); }
+
+.events-panel-header {
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.events-panel-title {
+  font-family: 'Syne', sans-serif; font-weight: 700;
+  font-size: 1.125rem; color: var(--text);
+}
+.events-panel-close {
+  width: 1.625rem; height: 1.625rem;
+  background: transparent; border: 1px solid var(--border2);
+  color: var(--muted); font-size: 0.875rem; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s;
+}
+.events-panel-close:hover { color: var(--text); border-color: rgba(255,255,255,0.2); }
+
+.events-tabs {
+  display: flex; border-bottom: 1px solid var(--border);
+}
+.events-tab {
+  flex: 1; padding: 0.875rem;
+  font-family: 'Geist Mono', monospace; font-size: 0.625rem;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--muted); cursor: pointer;
+  border-bottom: 2px solid transparent; margin-bottom: -1px;
+  transition: all 0.2s; background: transparent; border-top: none; border-left: none; border-right: none;
+  text-align: center;
+}
+.events-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+.events-tab:hover:not(.active) { color: var(--text); }
+
+.events-list { flex: 1; overflow-y: auto; padding: 1rem 1.25rem; }
+.events-list::-webkit-scrollbar { width: 3px; }
+.events-list::-webkit-scrollbar-thumb { background: var(--border2); }
+
+.event-card {
+  background: rgba(255,255,255,0.02);
+  border: 1px solid var(--border);
+  padding: 1rem 1.125rem 1rem;
+  margin-bottom: 0.75rem;
+  cursor: pointer; transition: border-color 0.2s, background 0.2s;
+  position: relative;
+}
+.event-card:hover { border-color: var(--border2); background: rgba(255,255,255,0.04); }
+.event-card-top { display: flex; align-items: flex-start; gap: 0.625rem; margin-bottom: 0.5rem; }
+.event-color-bar { width: 3px; height: 100%; position: absolute; left: 0; top: 0; bottom: 0; }
+.event-card-name {
+  font-family: 'Instrument Serif', serif; font-size: 1rem;
+  color: var(--text); line-height: 1.2; flex: 1;
+}
+.event-card-delete {
+  background: transparent; border: none; color: var(--muted); cursor: pointer;
+  font-size: 0.75rem; padding: 0.125rem 0.25rem; transition: color 0.15s;
+  opacity: 0;
+}
+.event-card:hover .event-card-delete { opacity: 1; }
+.event-card-delete:hover { color: #f07060; }
+.event-meta { display: flex; gap: 0.5rem; margin-bottom: 0.625rem; flex-wrap: wrap; }
+.event-meta-tag {
+  font-family: 'Geist Mono', monospace; font-size: 0.5rem;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--muted); padding: 0.2rem 0.5rem;
+  border: 1px solid var(--border); background: rgba(255,255,255,0.02);
+}
+.event-people { display: flex; gap: 0.375rem; flex-wrap: wrap; margin-top: 0.5rem; }
+.event-person-pill {
+  font-family: 'Geist Mono', monospace; font-size: 0.5rem; letter-spacing: 0.06em;
+  color: var(--muted); padding: 0.2rem 0.5rem;
+  border: 1px solid var(--border); border-radius: 999px;
+}
+
+/* Add form */
+.add-form { flex: 1; overflow-y: auto; padding: 1.25rem 1.5rem; }
+.add-form::-webkit-scrollbar { width: 3px; }
+.add-form::-webkit-scrollbar-thumb { background: var(--border2); }
+.add-field { margin-bottom: 0.875rem; }
+.add-label {
+  display: block; font-family: 'Geist Mono', monospace;
+  font-size: 0.5625rem; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--muted); margin-bottom: 0.375rem;
+}
+.add-input {
+  width: 100%; background: rgba(0,0,0,0.35);
+  border: 1px solid var(--border2); color: var(--text);
+  font-family: 'Geist Mono', monospace; font-size: 0.75rem;
+  padding: 0.5625rem 0.75rem; outline: none; transition: border-color 0.2s;
+}
+.add-input::placeholder { color: var(--muted); }
+.add-input:focus { border-color: var(--accent); }
+.color-row { display: flex; gap: 0.5rem; margin-top: 0.375rem; flex-wrap: wrap; }
+.color-swatch {
+  width: 1.5rem; height: 1.5rem; border-radius: 50%;
+  cursor: pointer; border: 2px solid transparent;
+  transition: all 0.15s;
+}
+.color-swatch.selected { border-color: var(--text); transform: scale(1.2); }
+.add-btn {
+  width: 100%; padding: 0.75rem;
+  background: var(--accent); color: #07070f;
+  font-family: 'Geist Mono', monospace; font-size: 0.6875rem;
+  font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+  border: none; cursor: pointer; transition: opacity 0.2s;
+  margin-top: 0.5rem;
+}
+.add-btn:hover { opacity: 0.88; }
+.add-divider { height: 1px; background: var(--border); margin: 1.25rem 0; }
+.add-section-title {
+  font-family: 'Geist Mono', monospace; font-size: 0.5625rem;
+  letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--muted); margin-bottom: 0.875rem;
+}
+.add-person-row { display: flex; gap: 0.5rem; }
+.add-person-row .add-input { flex: 1; }
+.add-person-btn {
+  padding: 0 0.875rem;
+  background: transparent; border: 1px solid var(--border2);
+  color: var(--muted); cursor: pointer; font-size: 1.125rem;
+  transition: all 0.15s; flex-shrink: 0;
+}
+.add-person-btn:hover { color: var(--accent); border-color: rgba(184,150,90,0.4); }
+
+/* ── TOAST ────────────────────────────────────────────────────── */
+.toast {
+  position: fixed; bottom: 1.25rem; left: 50%;
+  transform: translateX(-50%) translateY(0.625rem);
+  background: rgba(16,16,28,0.97); border: 1px solid var(--border2);
+  padding: 0.6875rem 1.375rem;
+  font-family: 'Geist Mono', monospace; font-size: 0.6875rem;
+  color: var(--text); z-index: 100; opacity: 0;
+  transition: all 0.3s; pointer-events: none;
+  white-space: nowrap; backdrop-filter: blur(16px);
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ── GRAPH STYLES ─────────────────────────────────────────────── */
+.node circle { stroke-width: 1.5px; cursor: pointer; transition: r 0.2s; }
+.node circle:hover { stroke-width: 2.5px; }
+.link { stroke: rgba(255,255,255,0.06); stroke-width: 1px; }
+.link.highlighted { stroke: rgba(184,150,90,0.4); stroke-width: 1.5px; }
+.event-node { cursor: pointer; }
+.event-node circle { stroke-width: 2px; }
+.graph-legend {
+  position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%);
+  display: flex; gap: 1.5rem; align-items: center;
+  background: var(--surface2); border: 1px solid var(--border2);
+  padding: 0.625rem 1.25rem;
+  font-family: 'Geist Mono', monospace; font-size: 0.5625rem;
+  letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted);
+  z-index: 10;
+}
+.legend-item { display: flex; align-items: center; gap: 0.5rem; }
+.legend-dot { width: 0.5rem; height: 0.5rem; border-radius: 50%; }
+.legend-ring { width: 0.625rem; height: 0.625rem; border-radius: 50%; border: 1.5px solid var(--accent); background: transparent; }
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes pulse {
+  0%,100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:2rem;">
+    <div class="logo">NetKofi</div>
+    <div class="search-wrap">
+      <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+      </svg>
+      <input class="search-input" id="searchInput" type="text" placeholder="Pinpoint a branch...">
+      <div class="search-dropdown" id="searchDropdown">
+        <div class="search-dropdown-header">
+          <span class="search-dropdown-label">Branches Found</span>
+        </div>
+        <div id="searchResults"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="stats-pill" id="statsBar">
+    <div style="width:0.375rem;height:0.375rem;border-radius:50%;border:1px solid var(--muted)"></div>
+    <span id="statConnections">12</span> connections &nbsp;·&nbsp;
+    <span id="statEdges">24</span> edges
+  </div>
+
+  <div class="topbar-actions">
+    <button class="topbar-btn">History</button>
+    <button class="topbar-btn topbar-btn-cta">Invite →</button>
+  </div>
+</div>
+
+<!-- SCORE CARD -->
+<div class="score-card">
+  <div class="score-number">740</div>
+  <div class="score-label">Network Score</div>
+  <div class="score-divider"></div>
+  <div class="score-item">+20 &nbsp;Followed up with Alex</div>
+  <div class="score-item">+30 &nbsp;Introduced two people</div>
+  <div class="score-streak">
+    <svg viewBox="0 0 24 24" fill="currentColor" style="width:0.75rem;height:0.75rem"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+    5-week streak
+  </div>
+</div>
+
+<!-- SIDEBAR -->
+<div class="sidebar">
+  <button class="sidebar-btn" id="btnBranches" onclick="openPanel('list')" title="Network Branches">
+    <span class="sidebar-tooltip">Branches</span>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="5" r="3"/><circle cx="5" cy="19" r="3"/><circle cx="19" cy="19" r="3"/>
+      <path d="M12 8v4M8.5 17.5 12 12l3.5 5.5"/>
+    </svg>
+  </button>
+  <button class="sidebar-btn" id="btnAdd" onclick="openPanel('add')" title="Add New Branch">
+    <span class="sidebar-tooltip">Add Branch</span>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+    </svg>
+  </button>
+  <div class="sidebar-divider"></div>
+  <button class="sidebar-btn" title="Settings">
+    <span class="sidebar-tooltip">Settings</span>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="3"/>
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+    </svg>
+  </button>
+</div>
+
+<!-- GRAPH -->
+<div id="graph-canvas"></div>
+
+<!-- GRAPH LEGEND -->
+<div class="graph-legend">
+  <div class="legend-item"><div class="legend-dot" style="background:#b8965a"></div> You</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#5ecfb1"></div> Connection</div>
+  <div class="legend-item"><div class="legend-ring"></div> Branch / Event</div>
+</div>
+
+<!-- PROFILE OVERLAY -->
+<div class="profile-overlay" id="profileOverlay">
+  <div class="profile-header">
+    <div style="flex:1">
+      <img class="profile-avatar" id="profileAvatar" src="" alt="">
+      <div class="profile-name" id="profileName"></div>
+      <div class="profile-role" id="profileRole"></div>
+    </div>
+    <button class="profile-close" onclick="closeProfile()">✕</button>
+  </div>
+  <div class="profile-body">
+    <div class="profile-section">
+      <div class="profile-section-label">Bio</div>
+      <div class="profile-bio" id="profileBio"></div>
+    </div>
+    <div class="profile-section">
+      <div class="profile-section-label">Tags</div>
+      <div class="profile-tags" id="profileTags"></div>
+    </div>
+    <div class="profile-section">
+      <div class="profile-section-label">Branches</div>
+      <div id="profileEvents"></div>
+    </div>
+  </div>
+</div>
+
+<!-- EVENTS PANEL -->
+<div class="events-panel" id="eventsPanel">
+  <div class="events-panel-header">
+    <div class="events-panel-title">Branches</div>
+    <button class="events-panel-close" onclick="closePanel()">✕</button>
+  </div>
+  <div class="events-tabs">
+    <button class="events-tab active" id="tabList" onclick="switchPanelTab('list')">All Branches</button>
+    <button class="events-tab" id="tabAdd" onclick="switchPanelTab('add')">Add Branch</button>
+  </div>
+  <div class="events-list" id="eventsList"></div>
+  <div class="add-form" id="addForm" style="display:none">
+    <div class="add-field">
+      <label class="add-label">Branch Name</label>
+      <input class="add-input" id="newEventName" placeholder="e.g. Toronto AI Summit">
+    </div>
+    <div class="add-field">
+      <label class="add-label">Location</label>
+      <input class="add-input" id="newEventLocation" placeholder="e.g. MaRS Discovery District">
+    </div>
+    <div class="add-field">
+      <label class="add-label">Date</label>
+      <input class="add-input" id="newEventDate" type="date">
+    </div>
+    <div class="add-field">
+      <label class="add-label">Color</label>
+      <div class="color-row" id="colorRow"></div>
+    </div>
+    <button class="add-btn" onclick="submitNewEvent()">Create Branch →</button>
+    <div class="add-divider"></div>
+    <div class="add-section-title">// add person to branch</div>
+    <div class="add-field">
+      <label class="add-label">Branch</label>
+      <select class="add-input" id="addPersonEvent" style="-webkit-appearance:none; cursor:pointer;"></select>
+    </div>
+    <div class="add-person-row" style="margin-bottom:0.5rem">
+      <input class="add-input" id="addPersonName" placeholder="Name">
+      <input class="add-input" id="addPersonRole" placeholder="Role">
+    </div>
+    <input class="add-input" id="addPersonCompany" placeholder="Company" style="width:100%;margin-bottom:0.75rem">
+    <button class="add-btn" onclick="submitAddPerson()" style="background:rgba(255,255,255,0.06);color:var(--text);border:1px solid var(--border2)">Add Person →</button>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ─── DATA ──────────────────────────────────────────────────────────────────
+const COLORS = ['#b8965a','#5ecfb1','#e07b6a','#7b9ce0','#c47be0','#e0c17b','#7be0a0'];
+
+let events = [
+  { id:'e1', name:'Toronto AI Summit', location:'MaRS Discovery District', date:'Mar 15 2025', color:'#b8965a' },
+  { id:'e2', name:'Collision Conf', location:'Enercare Centre', date:'Jun 23 2025', color:'#5ecfb1' },
+  { id:'e3', name:'VC Happy Hour', location:'The Chase Toronto', date:'Feb 4 2025', color:'#e07b6a' },
+  { id:'e4', name:'Web Summit', location:'Lisbon, Portugal', date:'Nov 11 2024', color:'#7b9ce0' },
+];
+
+let profiles = [
+  { id:'p1', name:'Alex Chen', role:'Product Lead', company:'Shopify', bio:'Building commerce infrastructure for the next wave of D2C brands. Ex-Google, ex-Stripe.', avatar:'https://picsum.photos/seed/alex/200', tags:['Product','Fintech','AI'], connections:['p2','p3'], eventIds:['e1','e2'] },
+  { id:'p2', name:'Jordan Park', role:'VC Partner', company:'Relay Ventures', bio:'Early stage investor focused on B2B SaaS and developer tools.', avatar:'https://picsum.photos/seed/jordan/200', tags:['VC','SaaS','B2B'], connections:['p1','p4'], eventIds:['e2','e3'] },
+  { id:'p3', name:'Mia Osei', role:'ML Engineer', company:'Layer', bio:'Working on LLM infra and scalable ML pipelines. Research background from UofT.', avatar:'https://picsum.photos/seed/mia/200', tags:['ML','Infrastructure','Research'], connections:['p1','p5'], eventIds:['e1','e4'] },
+  { id:'p4', name:'Rafael Sousa', role:'Founder', company:'Canoa', bio:'Building vertical SaaS for the logistics industry. Third-time founder.', avatar:'https://picsum.photos/seed/rafael/200', tags:['Founder','Logistics','SaaS'], connections:['p2','p6'], eventIds:['e3','e4'] },
+  { id:'p5', name:'Priya Nair', role:'Designer', company:'Figma', bio:'Design systems, zero-to-one product design, and the intersection of design and code.', avatar:'https://picsum.photos/seed/priya/200', tags:['Design','Systems','Product'], connections:['p3','p7'], eventIds:['e1','e2'] },
+  { id:'p6', name:'Sam Kirby', role:'CTO', company:'Float', bio:'Engineering leader with deep roots in distributed systems and fintech architecture.', avatar:'https://picsum.photos/seed/sam/200', tags:['Engineering','Fintech','Systems'], connections:['p4','p7'], eventIds:['e2','e3'] },
+  { id:'p7', name:'Yuki Tanaka', role:'Growth', company:'Notion', bio:'Growth loops, user research, and go-to-market strategy for PLG companies.', avatar:'https://picsum.photos/seed/yuki/200', tags:['Growth','PLG','GTM'], connections:['p5','p6'], eventIds:['e1','e4'] },
+  { id:'p8', name:'Dana Cole', role:'Researcher', company:'Vector Institute', bio:'AI safety research and interpretability. Prev. DeepMind.', avatar:'https://picsum.photos/seed/dana/200', tags:['Safety','Research','AI'], connections:['p3','p1'], eventIds:['e4'] },
+  { id:'p9', name:'Chris Wu', role:'Angel Investor', company:'Independent', bio:'50+ investments in frontier tech. Board member at three startups.', avatar:'https://picsum.photos/seed/chris/200', tags:['Angel','Frontier','Strategy'], connections:['p2','p4'], eventIds:['e2','e3'] },
+  { id:'p10', name:'Leila Rashidi', role:'PM', company:'Wealthsimple', bio:'Consumer fintech PM. Obsessed with onboarding UX and reducing friction in financial products.', avatar:'https://picsum.photos/seed/leila/200', tags:['PM','Fintech','UX'], connections:['p1','p5'], eventIds:['e1','e3'] },
+  { id:'p11', name:'Tobias Mayer', role:'Backend Eng', company:'Stripe', bio:'Payments infra, API design, and reliability engineering.', avatar:'https://picsum.photos/seed/tobias/200', tags:['API','Payments','Reliability'], connections:['p6','p3'], eventIds:['e2','e4'] },
+  { id:'p12', name:'Chloe Dumont', role:'Founder', company:'Swell', bio:'Climate-tech founder building carbon accounting tools for SMBs.', avatar:'https://picsum.photos/seed/chloe/200', tags:['Climate','Founder','SMB'], connections:['p7','p4'], eventIds:['e1','e2'] },
+];
+
+// ─── GRAPH ─────────────────────────────────────────────────────────────────
+const W = () => window.innerWidth;
+const H = () => window.innerHeight;
+let selectedId = null;
+let focusId = null;
+let sim, linkSel, nodeSel, eventNodeSel;
+
+function buildGraph() {
+  d3.select('#graph-canvas').selectAll('*').remove();
+  const svg = d3.select('#graph-canvas').append('svg')
+    .attr('width', W()).attr('height', H());
+
+  // defs: glow
+  const defs = svg.append('defs');
+  const glow = defs.append('filter').attr('id','glow').attr('x','-50%').attr('y','-50%').attr('width','200%').attr('height','200%');
+  glow.append('feGaussianBlur').attr('in','SourceGraphic').attr('stdDeviation','3').attr('result','blur');
+  const feMerge = glow.append('feMerge');
+  feMerge.append('feMergeNode').attr('in','blur');
+  feMerge.append('feMergeNode').attr('in','SourceGraphic');
+
+  // Build nodes & links
+  const personNodes = profiles.map(p => ({ ...p, type:'person' }));
+  const eventNodes = events.map(e => ({ ...e, type:'event', x: W()/2 + (Math.random()-0.5)*300, y: H()/2 + (Math.random()-0.5)*200 }));
+  const allNodes = [...personNodes, ...eventNodes];
+
+  const links = [];
+  // Person-person connections
+  profiles.forEach(p => {
+    (p.connections||[]).forEach(cid => {
+      if (p.id < cid) links.push({ source: p.id, target: cid, type:'person' });
+    });
+  });
+  // Person-event connections
+  profiles.forEach(p => {
+    (p.eventIds||[]).forEach(eid => {
+      links.push({ source: p.id, target: eid, type:'event' });
+    });
+  });
+
+  const linkGroup = svg.append('g').attr('class','links');
+  const nodeGroup = svg.append('g').attr('class','nodes');
+
+  linkSel = linkGroup.selectAll('line').data(links).join('line')
+    .attr('class','link')
+    .style('stroke', d => d.type==='event' ? 'rgba(184,150,90,0.08)' : 'rgba(255,255,255,0.05)');
+
+  // Event nodes (rings)
+  eventNodeSel = nodeGroup.selectAll('.event-node').data(eventNodes).join('g')
+    .attr('class','event-node')
+    .call(d3.drag().on('start', dragStart).on('drag', dragged).on('end', dragEnd))
+    .on('click', (e,d) => { e.stopPropagation(); focusEvent(d.id); });
+
+  eventNodeSel.append('circle')
+    .attr('r', 18)
+    .style('fill','rgba(184,150,90,0.08)')
+    .style('stroke', d => d.color)
+    .style('stroke-width','1.5px')
+    .style('filter','url(#glow)');
+
+  eventNodeSel.append('text')
+    .attr('dy','0.35em')
+    .style('text-anchor','middle')
+    .style('font-family','Geist Mono, monospace')
+    .style('font-size','7px')
+    .style('fill',d=>d.color)
+    .style('letter-spacing','0.05em')
+    .style('pointer-events','none')
+    .text(d => d.name.split(' ').slice(0,2).join('\n').substring(0,6));
+
+  eventNodeSel.append('text')
+    .attr('dy','2rem')
+    .style('text-anchor','middle')
+    .style('font-family','Geist Mono, monospace')
+    .style('font-size','8px')
+    .style('fill',d=>d.color)
+    .style('opacity','0.8')
+    .style('pointer-events','none')
+    .text(d => d.name);
+
+  // Person nodes
+  nodeSel = nodeGroup.selectAll('.node').data(personNodes).join('g')
+    .attr('class','node')
+    .call(d3.drag().on('start', dragStart).on('drag', dragged).on('end', dragEnd))
+    .on('click', (e,d) => { e.stopPropagation(); openProfile(d.id); });
+
+  nodeSel.append('circle')
+    .attr('r', 12)
+    .style('fill', '#0e0e1c')
+    .style('stroke','#5ecfb1')
+    .style('stroke-width','1.5px');
+
+  // Avatar clip
+  personNodes.forEach((p,i) => {
+    defs.append('clipPath').attr('id',`clip-${p.id}`)
+      .append('circle').attr('r',11).attr('cx',0).attr('cy',0);
+    defs.append('pattern')
+      .attr('id',`avatar-${p.id}`).attr('width',1).attr('height',1).attr('patternContentUnits','objectBoundingBox')
+      .append('image')
+      .attr('href', p.avatar).attr('width',1).attr('height',1).attr('preserveAspectRatio','xMidYMid slice');
+  });
+
+  nodeSel.append('circle')
+    .attr('r',11)
+    .style('fill', d=>`url(#avatar-${d.id})`)
+    .style('clip-path', d=>`url(#clip-${d.id})`);
+
+  nodeSel.append('text')
+    .attr('class','node-label')
+    .attr('dy','1.6rem')
+    .style('text-anchor','middle')
+    .style('font-size','9px')
+    .text(d => d.name.split(' ')[0]);
+
+  // Simulation
+  sim = d3.forceSimulation(allNodes)
+    .force('link', d3.forceLink(links).id(d=>d.id).distance(90).strength(0.4))
+    .force('charge', d3.forceManyBody().strength(-200))
+    .force('center', d3.forceCenter(W()/2, H()/2))
+    .force('collision', d3.forceCollide(28))
+    .on('tick', ticked);
+
+  svg.on('click', () => {
+    if (selectedId) closeProfile();
+  });
+}
+
+function ticked() {
+  linkSel
+    .attr('x1', d=>d.source.x).attr('y1', d=>d.source.y)
+    .attr('x2', d=>d.target.x).attr('y2', d=>d.target.y);
+  nodeSel.attr('transform', d=>`translate(${d.x},${d.y})`);
+  eventNodeSel.attr('transform', d=>`translate(${d.x},${d.y})`);
+}
+
+function dragStart(e,d) { if (!e.active) sim.alphaTarget(0.3).restart(); d.fx=d.x; d.fy=d.y; }
+function dragged(e,d) { d.fx=e.x; d.fy=e.y; }
+function dragEnd(e,d) { if (!e.active) sim.alphaTarget(0); d.fx=null; d.fy=null; }
+
+function focusEvent(eventId) {
+  const eventNode = events.find(e=>e.id===eventId);
+  if (!eventNode) return;
+  toast(`// ${eventNode.name}`);
+  // Highlight connected people
+  nodeSel.selectAll('circle').style('opacity', d =>
+    d.eventIds?.includes(eventId) ? 1 : 0.25
+  );
+  setTimeout(() => nodeSel.selectAll('circle').style('opacity',1), 2000);
+}
+
+// ─── PROFILE ───────────────────────────────────────────────────────────────
+function openProfile(profileId) {
+  const p = profiles.find(x=>x.id===profileId);
+  if (!p) return;
+  selectedId = profileId;
+
+  document.getElementById('profileAvatar').src = p.avatar;
+  document.getElementById('profileName').textContent = p.name;
+  document.getElementById('profileRole').innerHTML = `${p.role} &nbsp;·&nbsp; <span>${p.company}</span>`;
+  document.getElementById('profileBio').textContent = p.bio || 'No bio yet.';
+
+  const tagsEl = document.getElementById('profileTags');
+  tagsEl.innerHTML = (p.tags||[]).map(t=>`<div class="profile-tag">${t}</div>`).join('');
+
+  const eventsEl = document.getElementById('profileEvents');
+  const pEvents = events.filter(e=>(p.eventIds||[]).includes(e.id));
+  eventsEl.innerHTML = pEvents.length ? pEvents.map(e=>`
+    <div class="profile-event-item">
+      <div class="profile-event-dot" style="background:${e.color}"></div>
+      <div>
+        <div class="profile-event-name">${e.name}</div>
+        <div class="profile-event-date">${e.date} · ${e.location}</div>
+      </div>
+    </div>`).join('') : '<div style="font-family:Geist Mono,monospace;font-size:0.6rem;color:var(--muted)">No branches yet.</div>';
+
+  document.getElementById('profileOverlay').classList.add('open');
+
+  // Highlight connected nodes
+  nodeSel.selectAll('circle:first-child')
+    .style('stroke', d => d.id===profileId ? 'var(--accent)' : (p.connections||[]).includes(d.id) ? '#5ecfb1' : '#2a2a3a')
+    .style('stroke-width', d => d.id===profileId ? '2.5px' : '1.5px');
+}
+
+function closeProfile() {
+  selectedId = null;
+  document.getElementById('profileOverlay').classList.remove('open');
+  nodeSel?.selectAll('circle:first-child').style('stroke','#2a2a3a').style('stroke-width','1.5px');
+}
+
+// ─── EVENTS PANEL ──────────────────────────────────────────────────────────
+let panelTab = 'list';
+
+function openPanel(mode) {
+  document.getElementById('eventsPanel').classList.add('open');
+  switchPanelTab(mode);
+}
+function closePanel() { document.getElementById('eventsPanel').classList.remove('open'); }
+
+function switchPanelTab(tab) {
+  panelTab = tab;
+  document.getElementById('tabList').classList.toggle('active', tab==='list');
+  document.getElementById('tabAdd').classList.toggle('active', tab==='add');
+  document.getElementById('eventsList').style.display = tab==='list' ? 'block' : 'none';
+  document.getElementById('addForm').style.display = tab==='add' ? 'block' : 'none';
+  if (tab==='list') renderEventsList();
+  if (tab==='add') populateEventSelects();
+}
+
+function renderEventsList() {
+  const el = document.getElementById('eventsList');
+  el.innerHTML = events.map(e => {
+    const people = profiles.filter(p=>(p.eventIds||[]).includes(e.id));
+    return `
+    <div class="event-card" onclick="focusEvent('${e.id}')">
+      <div class="event-color-bar" style="background:${e.color}"></div>
+      <div class="event-card-top">
+        <div class="event-card-name">${e.name}</div>
+        <button class="event-card-delete" onclick="event.stopPropagation();deleteEvent('${e.id}')">✕</button>
+      </div>
+      <div class="event-meta">
+        <span class="event-meta-tag">${e.location}</span>
+        <span class="event-meta-tag">${e.date}</span>
+      </div>
+      ${people.length ? `<div class="event-people">${people.map(p=>`<div class="event-person-pill">${p.name}</div>`).join('')}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function deleteEvent(eventId) {
+  events = events.filter(e=>e.id!==eventId);
+  profiles = profiles.map(p=>({ ...p, eventIds:(p.eventIds||[]).filter(id=>id!==eventId) }));
+  renderEventsList();
+  buildGraph();
+  updateStats();
+  toast('Branch removed.');
+}
+
+// Color picker
+const SWATCH_COLORS = ['#b8965a','#5ecfb1','#e07b6a','#7b9ce0','#c47be0','#e0c17b','#7be0a0','#e07bb8'];
+let selectedColor = SWATCH_COLORS[0];
+function buildColorPicker() {
+  const row = document.getElementById('colorRow');
+  row.innerHTML = SWATCH_COLORS.map(c=>`
+    <div class="color-swatch ${c===selectedColor?'selected':''}" style="background:${c}" onclick="selectColor('${c}')"></div>
+  `).join('');
+}
+function selectColor(c) {
+  selectedColor = c;
+  buildColorPicker();
+}
+buildColorPicker();
+
+function populateEventSelects() {
+  const sel = document.getElementById('addPersonEvent');
+  sel.innerHTML = events.map(e=>`<option value="${e.id}">${e.name}</option>`).join('');
+}
+
+function submitNewEvent() {
+  const name = document.getElementById('newEventName').value.trim();
+  const location = document.getElementById('newEventLocation').value.trim();
+  const date = document.getElementById('newEventDate').value;
+  if (!name) { toast('Branch name is required.'); return; }
+  const newEvent = {
+    id: `e${Date.now()}`,
+    name, location: location||'TBD',
+    date: date ? new Date(date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : 'TBD',
+    color: selectedColor
+  };
+  events.push(newEvent);
+  document.getElementById('newEventName').value='';
+  document.getElementById('newEventLocation').value='';
+  document.getElementById('newEventDate').value='';
+  buildGraph();
+  updateStats();
+  toast(`✓ Branch "${newEvent.name}" created.`);
+  switchPanelTab('list');
+}
+
+function submitAddPerson() {
+  const eventId = document.getElementById('addPersonEvent').value;
+  const name = document.getElementById('addPersonName').value.trim();
+  const role = document.getElementById('addPersonRole').value.trim();
+  const company = document.getElementById('addPersonCompany').value.trim();
+  if (!name || !eventId) { toast('Name and branch are required.'); return; }
+
+  const existing = profiles.find(p=>p.name.toLowerCase()===name.toLowerCase());
+  if (existing) {
+    if (!(existing.eventIds||[]).includes(eventId)) {
+      existing.eventIds = [...(existing.eventIds||[]), eventId];
+      toast(`✓ Added ${name} to branch.`);
+    } else {
+      toast(`${name} is already in this branch.`); return;
+    }
+  } else {
+    profiles.push({
+      id:`p${Date.now()}`, name,
+      role: role||'Connection', company: company||'Unknown',
+      bio:'', avatar:`https://picsum.photos/seed/${name.replace(' ','')}/200`,
+      tags:[], connections:[], interactionHistory:[], eventIds:[eventId]
+    });
+    toast(`✓ ${name} added to your network.`);
+  }
+  document.getElementById('addPersonName').value='';
+  document.getElementById('addPersonRole').value='';
+  document.getElementById('addPersonCompany').value='';
+  buildGraph();
+  updateStats();
+}
+
+// ─── SEARCH ────────────────────────────────────────────────────────────────
+const searchInput = document.getElementById('searchInput');
+const searchDropdown = document.getElementById('searchDropdown');
+const searchResults = document.getElementById('searchResults');
+
+searchInput.addEventListener('input', () => {
+  const q = searchInput.value.trim().toLowerCase();
+  if (!q) { searchDropdown.classList.remove('open'); return; }
+  const filtered = events.filter(e =>
+    e.name.toLowerCase().includes(q) || e.location.toLowerCase().includes(q)
+  );
+  searchDropdown.classList.add('open');
+  if (filtered.length===0) {
+    searchResults.innerHTML = '<div class="search-empty">No branches match your search.</div>';
+    return;
+  }
+  searchResults.innerHTML = filtered.map(e=>`
+    <button class="search-result-item" onclick="pinpointEvent('${e.id}')">
+      <div class="search-dot" style="background:${e.color}"></div>
+      <div style="flex:1;min-width:0">
+        <div class="search-result-name">${e.name}</div>
+        <div class="search-result-meta">${e.location} · ${e.date}</div>
+      </div>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:0.75rem;height:0.75rem;color:var(--muted);opacity:0.6"><path d="M7 17L17 7M17 7H7M17 7v10"/></svg>
+    </button>`).join('');
+});
+
+searchInput.addEventListener('blur', () => setTimeout(()=>searchDropdown.classList.remove('open'),150));
+
+function pinpointEvent(eventId) {
+  searchInput.value = '';
+  searchDropdown.classList.remove('open');
+  focusEvent(eventId);
+}
+
+// ─── STATS ─────────────────────────────────────────────────────────────────
+function updateStats() {
+  document.getElementById('statConnections').textContent = profiles.length;
+  document.getElementById('statEdges').textContent = profiles.length * 2;
+}
+
+// ─── TOAST ─────────────────────────────────────────────────────────────────
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 3000);
+}
+
+// ─── RESIZE ────────────────────────────────────────────────────────────────
+window.addEventListener('resize', () => {
+  if (sim) { sim.force('center', d3.forceCenter(W()/2,H()/2)); sim.alpha(0.1).restart(); }
+  d3.select('#graph-canvas svg').attr('width',W()).attr('height',H());
+});
+
+// ─── INIT ──────────────────────────────────────────────────────────────────
+buildGraph();
+updateStats();
+renderEventsList();
+</script>
+</body>
+</html>

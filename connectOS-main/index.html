@@ -1,0 +1,930 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NetKofi — Your Real Network</title>
+<link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@300;400;500;600&family=Instrument+Serif:ital@0;1&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+html { font-size: 16px; }
+body { width:100%; height:100%; overflow:hidden; background:#07070f; }
+
+:root {
+  --bg: #07070f;
+  --surface: rgba(12, 12, 22, 0.82);
+  --border: rgba(255,255,255,0.07);
+  --border2: rgba(255,255,255,0.11);
+  --text: #dddaf0;
+  --muted: #5a5870;
+  --accent: #b8965a;
+}
+
+/* ── TOP BAR ─────────────────────────────────────────────────────── */
+.topbar {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 3.375rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 2rem;
+  z-index: 20;
+}
+.logo {
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  font-size: 1.375rem;
+  color: var(--accent);
+  letter-spacing: -0.03em;
+}
+.topbar-links {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+.topbar-link {
+  font-family: 'Geist Mono', monospace;
+  font-size: 0.625rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  cursor: pointer;
+  transition: color 0.2s;
+  padding: 0.44rem 1rem;
+}
+.topbar-link:hover { color: var(--text); }
+
+/* ── HERO TEXT ────────────────────────────────────────────────────── */
+.hero-text {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  z-index: 10;
+  width: 90%;
+  max-width: 68rem;
+  padding: 0 1rem;
+}
+.hero-eyebrow {
+  font-family: 'Geist Mono', monospace;
+  font-size: 0.6875rem;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 1.5rem;
+  opacity: 0;
+  animation: fadeUp 0.9s 0.2s forwards;
+}
+.hero-title {
+  font-family: 'Instrument Serif', serif;
+  font-size: 5rem;
+  color: var(--text);
+  line-height: 1.06;
+  letter-spacing: -0.03em;
+  opacity: 0;
+  animation: fadeUp 0.9s 0.4s forwards;
+}
+.hero-title .line1 {
+  display: block;
+  color: #c8c0b0;
+  font-size: 2.8rem;
+  letter-spacing: -0.02em;
+  margin-bottom: 0.75rem;
+  font-family: 'Instrument Serif', serif;
+  font-weight: 400;
+}
+.hero-title em {
+  color: var(--accent);
+  font-style: italic;
+  display: block;
+}
+.hero-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+  margin-top: 2.5rem;
+  opacity: 0;
+  animation: fadeUp 0.9s 0.7s forwards;
+}
+.hero-btn {
+  font-family: 'Geist Mono', monospace;
+  font-size: 0.6875rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 0.75rem 1.75rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+}
+.hero-btn-cta {
+  background: var(--accent);
+  color: #07070f;
+  font-weight: 600;
+}
+.hero-btn-cta:hover { opacity: 0.85; transform: translateY(-1px); }
+.hero-btn-ghost {
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--border2);
+}
+.hero-btn-ghost:hover { color: var(--text); border-color: rgba(255,255,255,0.22); }
+
+/* ── AUTH MODAL OVERLAY ───────────────────────────────────────────── */
+.auth-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(7,7,15,0.6);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+  transition: opacity 0.3s, visibility 0.3s;
+}
+.auth-overlay.open {
+  opacity: 1;
+  pointer-events: all;
+  visibility: visible;
+}
+.auth-card {
+  width: 420px;
+  background: rgba(11,11,20,0.96);
+  border: 1px solid var(--border2);
+  backdrop-filter: blur(32px);
+  -webkit-backdrop-filter: blur(32px);
+  transform: translateY(16px) scale(0.98);
+  transition: transform 0.3s cubic-bezier(0.22,0,0,1);
+  position: relative;
+}
+.auth-overlay.open .auth-card {
+  transform: translateY(0) scale(1);
+}
+.auth-card-close {
+  position: absolute;
+  top: 14px; right: 14px;
+  width: 26px; height: 26px;
+  background: transparent;
+  border: 1px solid var(--border2);
+  color: var(--muted);
+  font-size: 14px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s;
+  z-index: 5;
+}
+.auth-card-close:hover { color: var(--text); border-color: rgba(255,255,255,0.2); }
+
+.auth-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+}
+.auth-tab {
+  flex: 1;
+  padding: 14px;
+  text-align: center;
+  font-family: 'Geist Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: all 0.2s;
+}
+.auth-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+.auth-tab:hover:not(.active) { color: var(--text); }
+
+.auth-forms { position: relative; overflow: hidden; }
+.auth-form {
+  padding: 24px 28px 26px;
+  opacity: 0;
+  transform: translateY(10px);
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  transition: opacity 0.28s, transform 0.28s;
+}
+.auth-form.visible {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: all;
+  position: relative;
+}
+
+.social-row { display: flex; gap: 8px; margin-bottom: 18px; }
+.social-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 9px 10px;
+  background: transparent;
+  border: 1px solid var(--border2);
+  color: var(--muted);
+  font-family: 'Geist Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.social-btn:hover { color: var(--text); border-color: rgba(255,255,255,0.2); background: rgba(255,255,255,0.03); }
+.s-icon { width: 14px; height: 14px; flex-shrink: 0; }
+
+.or-row { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+.or-line { flex: 1; height: 1px; background: var(--border); }
+.or-txt { font-family: 'Geist Mono', monospace; font-size: 10px; color: var(--muted); letter-spacing: 0.1em; }
+
+.field { margin-bottom: 12px; }
+.field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+.field-label {
+  display: block;
+  font-family: 'Geist Mono', monospace;
+  font-size: 9px;
+  color: var(--muted);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  margin-bottom: 5px;
+}
+.field-input {
+  width: 100%;
+  background: rgba(0,0,0,0.35);
+  border: 1px solid var(--border2);
+  color: var(--text);
+  font-family: 'Geist Mono', monospace;
+  font-size: 12px;
+  padding: 9px 12px;
+  outline: none;
+  transition: border-color 0.2s;
+  -webkit-appearance: none;
+}
+.field-input::placeholder { color: var(--muted); }
+.field-input:focus { border-color: var(--accent); }
+select.field-input { cursor: pointer; }
+select.field-input option { background: #0f0f1a; color: var(--text); }
+
+.pw-strength { display: flex; gap: 3px; margin-top: 6px; }
+.pw-seg { height: 2px; flex: 1; background: var(--border); transition: background 0.3s; }
+
+.check-row { display: flex; align-items: flex-start; gap: 9px; margin-bottom: 14px; }
+.check-box {
+  width: 13px; height: 13px; border: 1px solid var(--border2);
+  background: transparent; flex-shrink: 0; margin-top: 1px;
+  cursor: pointer; position: relative; transition: all 0.15s;
+}
+.check-box.on { background: var(--accent); border-color: var(--accent); }
+.check-box.on::after { content: '✓'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 8px; color: #07070f; }
+.check-label { font-family: 'Geist Mono', monospace; font-size: 10px; color: var(--muted); line-height: 1.6; cursor: pointer; }
+.check-label a { color: var(--accent); text-decoration: none; }
+
+.submit-btn {
+  width: 100%;
+  padding: 12px;
+  background: var(--accent);
+  color: #07070f;
+  font-family: 'Geist Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  border: none;
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.15s;
+  position: relative;
+  overflow: hidden;
+}
+.submit-btn:hover { opacity: 0.88; }
+.submit-btn:active { transform: scale(0.99); }
+
+.form-footer {
+  font-family: 'Geist Mono', monospace;
+  font-size: 10px;
+  color: var(--muted);
+  text-align: center;
+  margin-top: 12px;
+  line-height: 1.7;
+}
+.form-footer a { color: var(--accent); cursor: pointer; text-decoration: none; }
+
+.ripple { position: absolute; border-radius: 50%; background: rgba(7,7,15,0.2); transform: scale(0); animation: ripple 0.55s linear; pointer-events: none; }
+@keyframes ripple { to { transform: scale(4); opacity: 0; } }
+
+.toast {
+  position: fixed; bottom: 20px; left: 50%;
+  transform: translateX(-50%) translateY(10px);
+  background: rgba(16,16,28,0.95); border: 1px solid var(--border2);
+  padding: 11px 22px; font-family: 'Geist Mono', monospace; font-size: 11px;
+  color: var(--text); z-index: 100; opacity: 0;
+  transition: all 0.3s; pointer-events: none; white-space: nowrap;
+  backdrop-filter: blur(16px);
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ── USER MENU (logged in state) ─────────────────────────────────── */
+.user-menu {
+  position: relative;
+  display: none;
+  align-items: center;
+  gap: 0.5rem;
+}
+.user-menu.visible { display: flex; }
+.user-avatar {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #07070f;
+  font-family: 'Geist Mono', monospace;
+  font-size: 0.7rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border: 1px solid rgba(184,150,90,0.4);
+  transition: opacity 0.2s;
+}
+.user-avatar:hover { opacity: 0.8; }
+.user-dropdown {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: 180px;
+  background: rgba(11,11,20,0.98);
+  border: 1px solid var(--border2);
+  backdrop-filter: blur(20px);
+  padding: 0.5rem 0;
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+  transform: translateY(-4px);
+  transition: all 0.2s;
+  z-index: 100;
+}
+.user-dropdown.open {
+  opacity: 1;
+  pointer-events: all;
+  visibility: visible;
+  transform: translateY(0);
+}
+.user-dropdown-name {
+  font-family: 'Geist Mono', monospace;
+  font-size: 0.6rem;
+  color: var(--muted);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 0.5rem 1rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+}
+.user-dropdown-item {
+  font-family: 'Geist Mono', monospace;
+  font-size: 0.625rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 0.6rem 1rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.user-dropdown-item:hover { color: var(--text); background: rgba(255,255,255,0.03); }
+.user-dropdown-item.danger { color: #f07060; }
+.user-dropdown-item.danger:hover { background: rgba(240,112,96,0.07); }
+
+/* ── FORGOT PASSWORD FORM ────────────────────────────────────────── */
+.forgot-link { cursor: pointer; }
+
+.about-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(7,7,15,0.6);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+  transition: opacity 0.3s, visibility 0.3s;
+}
+.about-overlay.open {
+  opacity: 1;
+  pointer-events: all;
+  visibility: visible;
+}
+.about-panel {
+  width: min(90vw, 600px);
+  background: rgba(11,11,20,0.97);
+  border: 1px solid var(--border2);
+  backdrop-filter: blur(32px);
+  -webkit-backdrop-filter: blur(32px);
+  padding: 3rem 3rem 2.5rem;
+  position: relative;
+  transform: translateY(1rem) scale(0.98);
+  transition: transform 0.3s cubic-bezier(0.22,0,0,1);
+}
+.about-overlay.open .about-panel {
+  transform: translateY(0) scale(1);
+}
+.about-close {
+  position: absolute;
+  top: 1rem; right: 1rem;
+  width: 1.625rem; height: 1.625rem;
+  background: transparent;
+  border: 1px solid var(--border2);
+  color: var(--muted);
+  font-size: 0.875rem;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s;
+}
+.about-close:hover { color: var(--text); border-color: rgba(255,255,255,0.2); }
+.about-eyebrow {
+  font-family: 'Geist Mono', monospace;
+  font-size: 0.6rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 1.25rem;
+}
+.about-title {
+  font-family: 'Instrument Serif', serif;
+  font-size: 2.25rem;
+  color: var(--text);
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  margin-bottom: 1.75rem;
+}
+.about-title em { color: var(--accent); font-style: italic; }
+.about-divider {
+  height: 1px;
+  background: var(--border);
+  margin-bottom: 1.75rem;
+}
+.about-body {
+  font-family: 'Instrument Serif', serif;
+  font-size: 1.125rem;
+  color: #b8b4c8;
+  line-height: 1.75;
+  margin-bottom: 1.25rem;
+}
+.about-body + .about-body { margin-top: 0; }
+.about-footer {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.about-footer-tag {
+  font-family: 'Geist Mono', monospace;
+  font-size: 0.625rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.about-cta {
+  font-family: 'Geist Mono', monospace;
+  font-size: 0.6875rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 0.625rem 1.25rem;
+  background: var(--accent);
+  color: #07070f;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+.about-cta:hover { opacity: 0.85; }
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="logo">NetKofi</div>
+  <div class="topbar-links" id="topbarLinks">
+    <div class="topbar-link">Features</div>
+    <div class="topbar-link" onclick="openAbout()">About</div>
+  </div>
+  <div class="user-menu" id="userMenu">
+    <div class="user-avatar" id="userAvatar" onclick="toggleUserDropdown()">--</div>
+    <div class="user-dropdown" id="userDropdown">
+      <div class="user-dropdown-name" id="userDropdownName">...</div>
+      <div class="user-dropdown-item" onclick="openProfile()">Profile</div>
+      <div class="user-dropdown-item danger" onclick="signOut()">Sign Out</div>
+    </div>
+  </div>
+</div>
+
+<!-- HERO TEXT -->
+<div class="hero-text">
+  <div class="hero-eyebrow">// your living network</div>
+  <h1 class="hero-title">
+    <span class="line1">Most platforms show who you know.</span>
+    <em>NetKofi shows who<br>you actually talk to.</em>
+  </h1>
+  <div class="hero-actions">
+    <button class="hero-btn hero-btn-cta" onclick="openAuth('signup')">Sign Up →</button>
+    <button class="hero-btn hero-btn-ghost" onclick="openAuth('login')">Log In</button>
+  </div>
+</div>
+
+<!-- ABOUT MODAL -->
+<div class="about-overlay" id="aboutOverlay" onclick="aboutOverlayClick(event)">
+  <div class="about-panel">
+    <button class="about-close" onclick="closeAbout()">✕</button>
+    <div class="about-eyebrow">// our mission</div>
+    <h2 class="about-title">We built NetKofi because<br><em>networking is broken.</em></h2>
+    <div class="about-divider"></div>
+    <p class="about-body">
+      Every week you meet brilliant people — at conferences, coffee chats, hackathons, happy hours. You add them on LinkedIn. And then you never talk again.
+    </p>
+    <p class="about-body">
+      It's not that you don't care. It's that nothing reminds you to follow up. No one holds you accountable. And without momentum, connections fade into a list of names you can barely place.
+    </p>
+    <p class="about-body">
+      NetKofi is the app that closes that gap. We track who you've met, nudge you to follow up, and show you your real network — not the one you collected, but the one you actually maintain. Your relationships, made visible.
+    </p>
+    <div class="about-footer">
+      <span class="about-footer-tag">Toronto, Canada · 2025</span>
+      <button class="about-cta" onclick="closeAbout(); openAuth('signup')">Join NetKofi →</button>
+    </div>
+  </div>
+</div>
+
+<!-- AUTH MODAL -->
+<div class="auth-overlay" id="authOverlay" onclick="overlayClick(event)">
+  <div class="auth-card" id="authCard">
+    <button class="auth-card-close" onclick="closeAuth()">✕</button>
+    <div class="auth-tabs">
+      <div class="auth-tab active" id="tabLogin">Log In</div>
+      <div class="auth-tab" id="tabSignup">Sign Up</div>
+    </div>
+
+    <div class="auth-forms" id="authForms">
+
+      <!-- LOGIN -->
+      <div class="auth-form visible" id="formLogin">
+        <div class="social-row">
+          <button class="social-btn" onclick="socialAuth('Google')">
+            <svg class="s-icon" viewBox="0 0 24 24" fill="none">
+              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+            </svg>
+            Google
+          </button>
+          <button class="social-btn" onclick="socialAuth('LinkedIn')">
+            <svg class="s-icon" viewBox="0 0 24 24" fill="#0A66C2">
+              <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+            </svg>
+            LinkedIn
+          </button>
+        </div>
+        <div class="or-row"><div class="or-line"></div><span class="or-txt">or</span><div class="or-line"></div></div>
+        <div class="field">
+          <label class="field-label">Email</label>
+          <input type="email" class="field-input" placeholder="you@example.com" id="loginEmail">
+        </div>
+        <div class="field">
+          <label class="field-label">Password</label>
+          <input type="password" class="field-input" placeholder="••••••••" id="loginPw">
+        </div>
+        <button class="submit-btn" id="loginBtn">Log In to NetKofi</button>
+        <div class="form-footer">
+          <a class="forgot-link" onclick="switchTab('forgot')">Forgot password?</a> &nbsp;·&nbsp; No account? <a onclick="switchTab('signup')">Sign up</a>
+        </div>
+      </div>
+
+      <!-- FORGOT PASSWORD -->
+      <div class="auth-form" id="formForgot">
+        <p style="font-family:'Geist Mono',monospace;font-size:0.7rem;color:var(--muted);line-height:1.7;margin-bottom:1.25rem;">
+          Enter your email and we'll send you a link to reset your password.
+        </p>
+        <div class="field">
+          <label class="field-label">Email</label>
+          <input type="email" class="field-input" placeholder="you@example.com" id="forgotEmail">
+        </div>
+        <button class="submit-btn" id="forgotBtn">Send Reset Link</button>
+        <div class="form-footer"><a onclick="switchTab('login')">← Back to Log In</a></div>
+      </div>
+
+      <!-- SIGNUP -->
+      <div class="auth-form" id="formSignup">
+        <div class="social-row">
+          <button class="social-btn" onclick="socialAuth('Google')">
+            <svg class="s-icon" viewBox="0 0 24 24" fill="none">
+              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+            </svg>
+            Google
+          </button>
+          <button class="social-btn" onclick="socialAuth('LinkedIn')">
+            <svg class="s-icon" viewBox="0 0 24 24" fill="#0A66C2">
+              <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+            </svg>
+            LinkedIn
+          </button>
+        </div>
+        <div class="or-row"><div class="or-line"></div><span class="or-txt">or</span><div class="or-line"></div></div>
+        <div class="field-row">
+          <div>
+            <label class="field-label">First name</label>
+            <input type="text" class="field-input" placeholder="Alex">
+          </div>
+          <div>
+            <label class="field-label">Last name</label>
+            <input type="text" class="field-input" placeholder="Chen">
+          </div>
+        </div>
+        <div class="field">
+          <label class="field-label">Email</label>
+          <input type="email" class="field-input" placeholder="you@example.com">
+        </div>
+        <div class="field">
+          <label class="field-label">Password</label>
+          <input type="password" class="field-input" placeholder="Create a strong password" id="signupPw" oninput="strengthCheck(this.value)">
+          <div class="pw-strength">
+            <div class="pw-seg" id="ps1"></div><div class="pw-seg" id="ps2"></div>
+            <div class="pw-seg" id="ps3"></div><div class="pw-seg" id="ps4"></div>
+          </div>
+        </div>
+        <div class="field">
+          <label class="field-label">Industry</label>
+          <select class="field-input">
+            <option value="" disabled selected>Select your field...</option>
+            <option>Tech & AI</option><option>Finance & VC</option>
+            <option>Startup & Founder</option><option>Design & Product</option>
+            <option>Marketing & Growth</option><option>Other</option>
+          </select>
+        </div>
+        <div class="check-row">
+          <div class="check-box" id="agreeBox" onclick="this.classList.toggle('on')"></div>
+          <div class="check-label" onclick="document.getElementById('agreeBox').classList.toggle('on')">
+            I agree to NetKofi's <a>Terms of Service</a> and <a>Privacy Policy</a>
+          </div>
+        </div>
+        <button class="submit-btn" id="signupBtn">Create my NetKofi account</button>
+        <div class="form-footer">Already have an account? <a onclick="switchTab('login')">Log in</a></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ✦  NETKOFI CONFIG — swap these values before deploying
+//    Supabase Dashboard → Settings → API
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const CONFIG = {
+  supabaseUrl:  'https://jpxgsavlactmmbohdhke.supabase.co',        // e.g. https://xyzabc.supabase.co
+  supabaseAnon: 'sb_publishable_OuOQLU3azEydHtEYTsNb0g_NyvPTCsR',   // starts with eyJ...
+  siteUrl:      'http://localhost:5174/',           // e.g. https://netkofi.com (used for OAuth + password reset redirects)
+}
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+const { createClient } = supabase
+const sb = createClient(CONFIG.supabaseUrl, CONFIG.supabaseAnon)
+
+// ── AUTH STATE ─────────────────────────────────────────────────────────────
+// We do NOT auto-redirect on session restore — only on a fresh login.
+// Without this guard, any returning user with a saved session would skip
+// the landing page entirely and land on dashboard without logging in.
+let sessionRestored = false
+sb.auth.getSession().then(() => {
+  sessionRestored = true
+})
+
+sb.auth.onAuthStateChange((event, session) => {
+  if (event === 'SIGNED_IN' && sessionRestored) {
+    // Fresh login just happened — go to dashboard
+    window.location.href = 'dashboard.html'
+  }
+  if (event === 'SIGNED_OUT') setLoggedOut()
+  if (event === 'PASSWORD_RECOVERY') {
+    toast('Set your new password in your account settings.')
+  }
+})
+
+function setLoggedOut() {
+  document.getElementById('topbarLinks').style.display = 'flex'
+  document.getElementById('userMenu').classList.remove('visible')
+
+  const actions = document.querySelector('.hero-actions')
+  actions.innerHTML = `
+    <button class="hero-btn hero-btn-cta" onclick="openAuth('signup')">Sign Up →</button>
+    <button class="hero-btn hero-btn-ghost" onclick="openAuth('login')">Log In</button>
+  `
+}
+
+// ── USER DROPDOWN ──────────────────────────────────────────────────────────
+function toggleUserDropdown() {
+  document.getElementById('userDropdown').classList.toggle('open')
+}
+document.addEventListener('click', e => {
+  const menu = document.getElementById('userMenu')
+  if (!menu.contains(e.target)) document.getElementById('userDropdown').classList.remove('open')
+})
+
+function openProfile() {
+  document.getElementById('userDropdown').classList.remove('open')
+  toast('Profile management coming soon!')
+}
+
+async function signOut() {
+  document.getElementById('userDropdown').classList.remove('open')
+  const { error } = await sb.auth.signOut()
+  if (error) { toast('✕ ' + error.message); return }
+  toast('Signed out. See you soon.')
+}
+
+// ── ABOUT PANEL ────────────────────────────────────────────────────────────
+function openAbout() {
+  document.getElementById('aboutOverlay').classList.add('open')
+}
+function closeAbout() {
+  document.getElementById('aboutOverlay').classList.remove('open')
+}
+function aboutOverlayClick(e) {
+  if (e.target === document.getElementById('aboutOverlay')) closeAbout()
+}
+
+// ── AUTH MODAL ─────────────────────────────────────────────────────────────
+function openAuth(tab) {
+  document.getElementById('authOverlay').classList.add('open')
+  switchTab(tab || 'login')
+}
+function closeAuth() {
+  document.getElementById('authOverlay').classList.remove('open')
+}
+function overlayClick(e) {
+  if (e.target === document.getElementById('authOverlay')) closeAuth()
+}
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { closeAuth(); closeAbout() }
+})
+
+// ── TAB SWITCHING ──────────────────────────────────────────────────────────
+function switchTab(tab) {
+  const forms = { login: 'formLogin', signup: 'formSignup', forgot: 'formForgot' }
+  Object.entries(forms).forEach(([key, id]) => {
+    document.getElementById(id).classList.toggle('visible', key === tab)
+  })
+  // Update tab highlight (only login/signup have tabs)
+  document.getElementById('tabLogin').classList.toggle('active', tab === 'login' || tab === 'forgot')
+  document.getElementById('tabSignup').classList.toggle('active', tab === 'signup')
+}
+document.getElementById('tabLogin').addEventListener('click', () => switchTab('login'))
+document.getElementById('tabSignup').addEventListener('click', () => switchTab('signup'))
+
+// ── SIGN UP ────────────────────────────────────────────────────────────────
+document.getElementById('signupBtn').addEventListener('click', async e => {
+  ripple(e.currentTarget, e)
+
+  if (!document.getElementById('agreeBox').classList.contains('on')) {
+    toast('Please agree to the Terms'); return
+  }
+
+  const email     = document.querySelector('#formSignup input[type="email"]').value.trim()
+  const password  = document.getElementById('signupPw').value
+  const firstName = document.querySelector('#formSignup input[placeholder="Alex"]').value.trim()
+  const lastName  = document.querySelector('#formSignup input[placeholder="Chen"]').value.trim()
+  const industry  = document.querySelector('#formSignup select').value
+
+  if (!email || !password || !firstName) {
+    toast('Please fill in all required fields'); return
+  }
+  if (password.length < 8) {
+    toast('Password must be at least 8 characters'); return
+  }
+
+  setBtnLoading('signupBtn', true)
+
+  const { data, error } = await sb.auth.signUp({
+    email,
+    password,
+    options: {
+      data: { full_name: `${firstName} ${lastName}`.trim(), industry }
+    }
+  })
+
+  setBtnLoading('signupBtn', false)
+
+  if (error) { toast('✕ ' + error.message); return }
+
+  if (data.user && !data.session) {
+    // Email confirmation required
+    toast('✓ Check your email to confirm your account!')
+    closeAuth()
+  } else {
+    toast('✓ Welcome to NetKofi!')
+  }
+})
+
+// ── LOG IN ─────────────────────────────────────────────────────────────────
+document.getElementById('loginBtn').addEventListener('click', async e => {
+  ripple(e.currentTarget, e)
+
+  const email    = document.getElementById('loginEmail').value.trim()
+  const password = document.getElementById('loginPw').value
+
+  if (!email || !password) { toast('Please enter your email and password'); return }
+
+  setBtnLoading('loginBtn', true)
+
+  const { data, error } = await sb.auth.signInWithPassword({ email, password })
+
+  setBtnLoading('loginBtn', false)
+
+  if (error) { toast('✕ ' + error.message); return }
+  toast('✓ Welcome back!')
+})
+
+// ── FORGOT PASSWORD ────────────────────────────────────────────────────────
+document.getElementById('forgotBtn').addEventListener('click', async e => {
+  ripple(e.currentTarget, e)
+
+  const email = document.getElementById('forgotEmail').value.trim()
+  if (!email) { toast('Please enter your email'); return }
+
+  setBtnLoading('forgotBtn', true)
+
+  const { error } = await sb.auth.resetPasswordForEmail(email, {
+    redirectTo: CONFIG.siteUrl
+  })
+
+  setBtnLoading('forgotBtn', false)
+
+  if (error) { toast('✕ ' + error.message); return }
+  toast('✓ Reset link sent — check your inbox!')
+  switchTab('login')
+})
+
+// ── OAUTH (Google / LinkedIn) ──────────────────────────────────────────────
+async function socialAuth(provider) {
+  const p = provider === 'Google' ? 'google' : 'linkedin_oidc'
+  const { error } = await sb.auth.signInWithOAuth({
+    provider: p,
+    options: { redirectTo: CONFIG.siteUrl }
+  })
+  if (error) toast('✕ ' + error.message)
+}
+
+// ── HELPERS ────────────────────────────────────────────────────────────────
+function setBtnLoading(id, loading) {
+  const btn = document.getElementById(id)
+  btn.disabled = loading
+  btn.style.opacity = loading ? '0.6' : '1'
+  if (loading) btn.dataset.orig = btn.textContent
+  else btn.textContent = btn.dataset.orig || btn.textContent
+}
+
+function strengthCheck(pw) {
+  let s = 0
+  if (pw.length >= 8) s++
+  if (/[A-Z]/.test(pw)) s++
+  if (/[0-9]/.test(pw)) s++
+  if (/[^A-Za-z0-9]/.test(pw)) s++
+  const cols = ['#f07060','#f4a261','#4ecdc4','#5ecfb1']
+  ;[1,2,3,4].forEach(i => {
+    document.getElementById('ps'+i).style.background = i <= s ? cols[s-1] : 'var(--border)'
+  })
+}
+
+function ripple(btn, e) {
+  const r = document.createElement('div'); r.className = 'ripple'
+  const rect = btn.getBoundingClientRect(), sz = Math.max(rect.width, rect.height)
+  r.style.cssText = `width:${sz}px;height:${sz}px;left:${e.clientX-rect.left-sz/2}px;top:${e.clientY-rect.top-sz/2}px`
+  btn.appendChild(r); setTimeout(() => r.remove(), 600)
+}
+
+function toast(msg) {
+  const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show')
+  setTimeout(() => t.classList.remove('show'), 3000)
+}
+</script>
+</body>
+</html>
